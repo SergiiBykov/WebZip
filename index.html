@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WinZip WebAssembly2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+
+        #drop-area {
+            width: 300px;
+            height: 200px;
+            border: 2px dashed #fcc;
+            background-color: #f9f9f9;
+            margin: 0 auto;
+            margin-top: 50px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        #drop-area p {
+            margin: 20px;
+            font-size: 16px;
+            color: #555;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        #upload-button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+	<div id="drop-area">
+        <p>Drop file here...</p>
+    </div>
+    
+	
+	<script src="example.js"></script>
+	
+    <script>
+		const dropZone = document.getElementById('drop-area');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.backgroundColor = '#e1e1e1';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.backgroundColor = '#f9f9f9';
+        });
+
+        
+		
+		//wait for the page to load
+    	window.addEventListener('load', (event) => {
+		
+			//wait for the WebAssembly module to load
+			Module['onRuntimeInitialized'] = () => 
+			{   
+				
+				console.log( Module );
+
+				//make an instance of the class Zip
+				const zip = new Module.MyClass();
+				
+				console.log( zip );
+				
+				function changeFileExtension(filename, newExtension)
+				{
+				  var parts = filename.split(".");
+				  parts.pop();
+				  parts.push(newExtension);
+				 
+				  var updatedFilename = parts.join(".");
+				  return updatedFilename;
+				}
+				
+				function archiveAndSaveFile( file )
+				{
+					let reader = new FileReader();
+
+					reader.onload = function (event) 
+					{
+						let fileData = event.target.result;
+
+						const inputLenth = fileData.byteLength;
+						const inputArray = new Uint8Array(fileData, 0, inputLenth); 
+						
+						console.log( fileData );
+						console.time("myFunction");
+						const outputArray = zip.myFunction( inputArray, file.name );
+						console.timeEnd("myFunction");
+				
+						// Создаем новый Blob из данных
+						let blob = new Blob([outputArray], { type: file.type });
+
+						// Создаем ссылку для скачивания
+						let downloadLink = document.getElementById('download-link');
+						downloadLink.href = URL.createObjectURL(blob);
+						downloadLink.download = changeFileExtension( file.name, 'zip' );
+						downloadLink.textContent = 'Download converted file';
+						downloadLink.style.display = 'block';
+					};
+
+					// Читаем файл как ArrayBuffer
+					reader.readAsArrayBuffer(file);
+				}
+				
+				function handleFileDrop(e) 
+				{
+					e.preventDefault();
+					let file = e.dataTransfer.files[0];
+
+					archiveAndSaveFile( file );
+				}
+				
+				function handleFileSelect(e) 
+				{
+					e.preventDefault();
+					let file = e.target.files[0];
+
+					archiveAndSaveFile( file );
+				}
+				
+		  
+				// Предотвращаем стандартное поведение браузера при перетаскивании файлов
+				document.getElementById('drop-area').addEventListener('dragover', function (e) 
+				{
+					e.preventDefault();
+				});
+
+				document.getElementById('drop-area').addEventListener('drop', handleFileDrop);
+				document.getElementById("fileSelection").addEventListener("change", handleFileSelect );
+			};
+		});
+
+    </script>
+	
+	<div class="section">
+		<div class="sectionRow">
+			<div class="inputLabel">select files to compress</div>
+			<input type="file" id="fileSelection" name="fileSelection" multiple>
+		</div>
+	</div>
+	
+	<a id="download-link" style="display: none;">Click to download converted file</a>
+</body>
+</html>
